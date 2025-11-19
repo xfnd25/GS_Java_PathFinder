@@ -23,6 +23,17 @@ public interface TrilhaAprendizagemRepository extends JpaRepository<TrilhaAprend
         @Param("p_titulo_objetivo") String tituloObjetivo
     );
 
+    @Procedure(procedureName = "PKG_PERFIS_E_TRILHAS.PR_ATUALIZAR_TRILHA")
+    void prAtualizarTrilha(
+        @Param("p_id_trilha") Long idTrilha,
+        @Param("p_titulo_objetivo") String tituloObjetivo
+    );
+
+    @Procedure(procedureName = "PKG_PERFIS_E_TRILHAS.PR_DELETAR_TRILHA")
+    void prDeletarTrilha(
+        @Param("p_id_trilha") Long idTrilha
+    );
+
     /**
      * Busca todas as trilhas de aprendizagem de forma paginada.
      * @param pageable Objeto de paginação.

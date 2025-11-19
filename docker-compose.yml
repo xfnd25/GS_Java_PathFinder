@@ -5,13 +5,26 @@ services:
     image: rabbitmq:3-management
     container_name: rabbitmq-gs
     ports:
-      - "5672:5672"   # Porta de comunicação com o Java
-      - "15672:15672" # Porta do Painel de Gerenciamento
+      - "5672:5672"
+      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq # Persistência (para não perder filas se reiniciar)
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  oracle-db:
+    image: gvenzl/oracle-free
+    container_name: oracle-gs
+    ports:
+      - "1521:1521"
+    environment:
+      - ORACLE_PASSWORD=password
+      - APP_USER=myuser
+      - APP_USER_PASSWORD=password
+    volumes:
+      - oracle_data:/container-entrypoint-initdb.d
 
 volumes:
   rabbitmq_data:
+  oracle_data:
