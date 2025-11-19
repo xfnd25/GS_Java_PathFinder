@@ -1,7 +1,7 @@
 package com.fiap.globalsolution.messaging;
 
 import com.fiap.globalsolution.config.RabbitMQConfig;
-import com.fiap.globalsolution.dto.CreateLearningPathRequest;
+import com.fiap.globalsolution.dto.request.LearningPathCreateRequest;
 import com.fiap.globalsolution.service.AIService;
 import com.fiap.globalsolution.service.LearningPathService;
 import org.slf4j.Logger;
@@ -27,7 +27,7 @@ public class LearningPathConsumer {
      * @param request O DTO recebido da fila.
      */
     @RabbitListener(queues = RabbitMQConfig.QUEUE_NAME)
-    public void receiveMessage(CreateLearningPathRequest request) {
+    public void receiveMessage(LearningPathCreateRequest request) {
         logger.info("Mensagem recebida para gerar trilha para o usuário ID: {}", request.getUserId());
         try {
             String aiGeneratedJson = aiService.gerarTrilha(

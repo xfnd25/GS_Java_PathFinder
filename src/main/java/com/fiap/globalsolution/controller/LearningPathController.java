@@ -1,13 +1,11 @@
 package com.fiap.globalsolution.controller;
 
-import com.fiap.globalsolution.domain.TrilhaAprendizagem; // Import Adicionado
-import com.fiap.globalsolution.dto.CreateLearningPathRequest;
-import com.fiap.globalsolution.dto.LearningPathResponse;
+import com.fiap.globalsolution.domain.TrilhaAprendizagem;
+import com.fiap.globalsolution.dto.request.LearningPathCreateRequest;
+import com.fiap.globalsolution.dto.response.LearningPathDetailResponse;
 import com.fiap.globalsolution.dto.UpdateLearningPathRequest;
-import com.fiap.globalsolution.messaging.LearningPathProducer;
 import com.fiap.globalsolution.service.LearningPathService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,72 +19,52 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/learning-paths")
-@Tag(name = "Trilhas de Aprendizado", description = "Endpoints para gerenciamento de trilhas de aprendizado geradas por IA.")
+@Tag(name = "Trilhas de Aprendizado", description = "Endpoints para gerenciamento de trilhas de aprendizado.")
 public class LearningPathController {
 
     private final LearningPathService learningPathService;
-    private final LearningPathProducer learningPathProducer;
 
-    public LearningPathController(LearningPathService learningPathService, LearningPathProducer learningPathProducer) {
+    public LearningPathController(LearningPathService learningPathService) {
         this.learningPathService = learningPathService;
-        this.learningPathProducer = learningPathProducer;
     }
 
     @Operation(
             summary = "Inicia a Geração de uma Nova Trilha",
-            description = "Recebe os dados do perfil do usuário e seu objetivo, inicia o registro no banco de dados com status 'PENDENTE' e envia uma mensagem para o RabbitMQ para processamento assíncrono. Retorna imediatamente o status 202 (Accepted)."
+            description = "Cria o registro da trilha e envia para processamento assíncrono. Retorna 202 (Accepted)."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "202", description = "Requisição aceita para processamento."),
-            @ApiResponse(responseCode = "400", description = "Dados da requisição inválidos."),
-            @ApiResponse(responseCode = "500", description = "Erro interno do servidor.")
+            @ApiResponse(responseCode = "202", description = "Requisição aceita."),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos.")
     })
     @PostMapping
-    public ResponseEntity<Void> createLearningPath(@Valid @RequestBody CreateLearningPathRequest request) {
-        Long trilhaId = learningPathService.iniciarCriacaoTrilha(
-                request.getUserId(),
-                request.getTituloObjetivo()
-        );
-
-        request.setTrilhaId(trilhaId);
-        learningPathProducer.sendGenerationRequest(request);
-
+    public ResponseEntity<Void> createLearningPath(@Valid @RequestBody LearningPathCreateRequest request) {
+        learningPathService.criarTrilha(request);
         return ResponseEntity.accepted().build();
     }
 
-    @Operation(
-            summary = "Lista Todas as Trilhas de Aprendizado",
-            description = "Retorna uma lista paginada de todas as trilhas de aprendizado existentes no sistema."
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Lista de trilhas retornada com sucesso."),
-            @ApiResponse(responseCode = "500", description = "Erro interno do servidor.")
-    })
+    @Operation(summary = "Lista Todas as Trilhas de Aprendizado")
     @GetMapping
-    public ResponseEntity<Page<LearningPathResponse>> getAllLearningPaths(
-            @Parameter(hidden = true) // Esconde parâmetro complexo do Swagger para evitar erro de envio
-            @PageableDefault(size = 10, page = 0, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
+    public ResponseEntity<Page<LearningPathDetailResponse>> getAllLearningPaths(
+            @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
 
-        Page<LearningPathResponse> responsePage = learningPathService.listarTrilhas(pageable)
-                .map(LearningPathResponse::new);
+        Page<LearningPathDetailResponse> responsePage = learningPathService.listarTrilhas(pageable)
+                .map(LearningPathDetailResponse::new);
 
         return ResponseEntity.ok(responsePage);
     }
 
     @Operation(summary = "Busca uma Trilha por ID")
     @GetMapping("/{id}")
-    public ResponseEntity<LearningPathResponse> getLearningPathById(@PathVariable Long id) {
-        // CORREÇÃO: 'var' substituído pelo tipo explícito
+    public ResponseEntity<LearningPathDetailResponse> getLearningPathById(@PathVariable Long id) {
         TrilhaAprendizagem learningPath = learningPathService.buscarTrilhaPorId(id);
-        return ResponseEntity.ok(new LearningPathResponse(learningPath));
+        return ResponseEntity.ok(new LearningPathDetailResponse(learningPath));
     }
 
     @Operation(summary = "Atualiza o Objetivo de uma Trilha")
     @PutMapping("/{id}")
-    public ResponseEntity<LearningPathResponse> updateLearningPath(@PathVariable Long id, @Valid @RequestBody UpdateLearningPathRequest request) {
-        // CORREÇÃO: 'var' substituído pelo tipo explícito
+    public ResponseEntity<LearningPathDetailResponse> updateLearningPath(@PathVariable Long id, @Valid @RequestBody UpdateLearningPathRequest request) {
         TrilhaAprendizagem learningPath = learningPathService.atualizarTrilha(id, request.getTituloObjetivo());
-        return ResponseEntity.ok(new LearningPathResponse(learningPath));
+        return ResponseEntity.ok(new LearningPathDetailResponse(learningPath));
     }
 
     @Operation(summary = "Exclui uma Trilha")

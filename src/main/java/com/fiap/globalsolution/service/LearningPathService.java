@@ -2,7 +2,9 @@ package com.fiap.globalsolution.service;
 
 import com.fiap.globalsolution.domain.TrilhaAprendizagem;
 import com.fiap.globalsolution.domain.enums.StatusTrilha;
+import com.fiap.globalsolution.dto.request.LearningPathCreateRequest;
 import com.fiap.globalsolution.exception.ResourceNotFoundException;
+import com.fiap.globalsolution.messaging.LearningPathProducer;
 import com.fiap.globalsolution.repository.TrilhaAprendizagemRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,34 +19,33 @@ public class LearningPathService {
 
     private static final Logger log = LoggerFactory.getLogger(LearningPathService.class);
     private final TrilhaAprendizagemRepository trilhaRepository;
+    private final LearningPathProducer learningPathProducer;
 
-    public LearningPathService(TrilhaAprendizagemRepository trilhaRepository) {
+    public LearningPathService(TrilhaAprendizagemRepository trilhaRepository, LearningPathProducer learningPathProducer) {
         this.trilhaRepository = trilhaRepository;
+        this.learningPathProducer = learningPathProducer;
     }
 
     /**
-     * Inicia a criação de uma nova trilha de aprendizado chamando a Stored Procedure.
-     * O status inicial será PENDENTE.
-     * @param userId O ID do usuário.
-     * @param tituloObjetivo O objetivo da trilha.
-     * @return O ID da nova trilha criada.
+     * Inicia a criação de uma nova trilha, salvando no banco e enviando para a fila.
+     * @param request Os dados da requisição.
      */
     @Transactional
-    public Long iniciarCriacaoTrilha(Long userId, String tituloObjetivo) {
-        return trilhaRepository.prInserirTrilha(userId, tituloObjetivo);
+    public void criarTrilha(LearningPathCreateRequest request) {
+        Long trilhaId = trilhaRepository.prInserirTrilha(request.getUserId(), request.getTituloObjetivo());
+        request.setTrilhaId(trilhaId);
+        learningPathProducer.sendGenerationRequest(request);
+        log.info("Requisição para criar trilha com ID {} enviada para a fila.", trilhaId);
     }
 
     /**
      * Atualiza uma trilha existente com o conteúdo gerado pela IA.
-     * Este método é chamado pelo consumer RabbitMQ.
      * @param trilhaId O ID da trilha a ser atualizada.
      * @param conteudoJson O JSON retornado pela IA.
      */
     @Transactional
     public void atualizarTrilhaComConteudoIA(Long trilhaId, String conteudoJson) {
-        TrilhaAprendizagem trilha = trilhaRepository.findById(trilhaId)
-            .orElseThrow(() -> new ResourceNotFoundException("Trilha não encontrada com o ID: " + trilhaId));
-
+        TrilhaAprendizagem trilha = buscarTrilhaPorId(trilhaId);
         trilha.setDadosJsonIA(conteudoJson);
         trilha.setStatus(StatusTrilha.CONCLUIDA);
         trilhaRepository.save(trilha);
@@ -57,9 +58,7 @@ public class LearningPathService {
      */
     @Transactional
     public void marcarTrilhaComoErro(Long trilhaId) {
-        TrilhaAprendizagem trilha = trilhaRepository.findById(trilhaId)
-            .orElseThrow(() -> new ResourceNotFoundException("Trilha não encontrada com o ID: " + trilhaId));
-
+        TrilhaAprendizagem trilha = buscarTrilhaPorId(trilhaId);
         trilha.setStatus(StatusTrilha.ERRO);
         trilhaRepository.save(trilha);
         log.error("Falha ao processar a trilha ID: {}. Status alterado para ERRO.", trilhaId);
@@ -67,7 +66,6 @@ public class LearningPathService {
 
     /**
      * Lista todas as trilhas de aprendizado de forma paginada.
-     * O resultado é cacheado para melhorar a performance.
      * @param pageable Configuração de paginação.
      * @return Uma página de trilhas.
      */
