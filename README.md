@@ -1,5 +1,11 @@
 # Pathfinder AI - FIAP Global Solution
 
+## 👨‍💻 Integrantes do Grupo
+* **Fernando Pacheco** - RM555317
+* **Guilherme Jardim** - RM556814
+
+---
+
 ## 1. Visão Geral do Projeto
 
 O **Pathfinder AI** é uma API RESTful de backend desenvolvida como parte da Global Solution da FIAP. O projeto utiliza **Java 17** e **Spring Boot 3** para criar uma plataforma robusta que gera trilhas de aprendizado (`Learning Paths`) personalizadas para requalificação profissional, utilizando o poder da Inteligência Artificial Generativa.
