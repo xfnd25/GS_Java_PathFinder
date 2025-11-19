@@ -10,4 +10,5 @@ public record RegisterRequest(
                  message = "A senha deve ter no mínimo 8 caracteres, uma letra maiúscula, um caractere especial e um número.")
         String senha
 ) {
+public record RegisterRequest(String nome, String email, String senha) {
 }
