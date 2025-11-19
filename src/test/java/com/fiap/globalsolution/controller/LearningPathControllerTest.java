@@ -31,6 +31,12 @@ class LearningPathControllerTest {
     @MockBean
     private LearningPathProducer learningPathProducer;
 
+    @MockBean
+    private com.fiap.globalsolution.service.TokenService tokenService;
+
+    @MockBean
+    private com.fiap.globalsolution.repository.UsuarioRepository usuarioRepository;
+
     @Autowired
     private ObjectMapper objectMapper;
 
