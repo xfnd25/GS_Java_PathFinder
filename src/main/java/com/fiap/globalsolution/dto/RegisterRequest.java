@@ -1,14 +1,14 @@
 package com.fiap.globalsolution.dto;
 
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
 public record RegisterRequest(
-        String nome,
-        @Email String email,
+        @NotBlank String nome,
+        @NotBlank @Email String email,
+        @NotBlank
         @Pattern(regexp = "^(?=.*[A-Z])(?=.*[@#$%^&+=!])(?=.*[0-9]).{8,}$",
-                 message = "A senha deve ter no mínimo 8 caracteres, uma letra maiúscula, um caractere especial e um número.")
+                message = "Senha deve ter min 8 caracteres, 1 maiúscula, 1 número e 1 especial")
         String senha
-) {
-public record RegisterRequest(String nome, String email, String senha) {
-}
+) {}
