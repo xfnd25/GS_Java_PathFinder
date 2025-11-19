@@ -8,35 +8,46 @@
 
 ## 1. Visão Geral do Projeto
 
-O **Pathfinder AI** é uma API RESTful de backend desenvolvida como parte da Global Solution da FIAP. O projeto utiliza **Java 17** e **Spring Boot 3** para criar uma plataforma robusta que gera trilhas de aprendizado (`Learning Paths`) personalizadas para requalificação profissional, utilizando o poder da Inteligência Artificial Generativa.
+O **Pathfinder AI** é uma API RESTful de backend desenvolvida como parte da Global Solution da FIAP. O projeto utiliza **Java 17** e **Spring Boot 3** para criar uma plataforma robusta que gera trilhas de aprendizado (`Learning Paths`) personalizadas para requalificação profissional, utilizando o poder da Inteligência Artificial Generativa do Google Gemini.
 
-O sistema foi projetado seguindo princípios de arquiteturas distribuídas e reativas, com um fluxo assíncrono para operações de longa duração, garantindo que a API permaneça responsiva e escalável.
+O sistema foi projetado seguindo princípios de arquiteturas distribuídas e reativas, com um fluxo assíncrono para operações de longa duração e um sistema de **autenticação JWT nativo**, garantindo que a API seja segura, responsiva e escalável.
 
 ### Principais Tecnologias
 - **Linguagem/Framework:** Java 17, Spring Boot 3
 - **Persistência:** Spring Data JPA, Oracle Database
 - **Mensageria:** Spring AMQP, RabbitMQ
-- **IA Generativa:** Spring AI (com OpenAI)
-- **Segurança:** Spring Security 6 (OAuth2 Resource Server - JWT)
+- **IA Generativa:** Spring AI (com **Google Gemini**)
+- **Segurança:** Spring Security 6 (com **autenticação JWT nativa**)
 - **Build:** Apache Maven
 
 ---
 
 ## 2. Arquitetura da Solução
 
-A arquitetura do Pathfinder AI foi desenhada para ser desacoplada e resiliente.
+A arquitetura do Pathfinder AI foi desenhada para ser desacoplada, resiliente e segura.
 
-![Arquitetura Simplificada](https://i.imgur.com/diagram.png) <!-- Imagem de exemplo -->
+### Fluxo da Aplicação
+1.  **Registro e Login:**
+    *   O usuário se registra na plataforma através do endpoint `POST /auth/register`.
+    *   Em seguida, realiza o login via `POST /auth/login`, fornecendo suas credenciais. A API valida os dados e retorna um **Token JWT Bearer**.
 
-O fluxo principal para a criação de uma trilha de aprendizado é o seguinte:
-1.  O cliente (aplicativo mobile/web) envia uma requisição `POST /api/v1/learning-paths` com um token JWT válido, contendo o perfil do usuário e seu objetivo de carreira.
-2.  O `LearningPathController` recebe a requisição, valida os dados e chama o `LearningPathService`.
-3.  O `LearningPathService` invoca uma **Stored Procedure** no Oracle (`PKG_PERFIS_E_TRILHAS.PR_INSERIR_TRILHA`) para criar um registro inicial da trilha com o status `PENDENTE`.
-4.  O Controller retorna imediatamente uma resposta `HTTP 202 Accepted`, informando que a solicitação foi aceita para processamento.
-5.  O `LearningPathProducer` publica uma mensagem contendo os detalhes da solicitação em uma fila do RabbitMQ.
-6.  O `LearningPathConsumer` escuta a fila, consome a mensagem e aciona o `AIService`.
-7.  O `AIService` monta um prompt detalhado e o envia para a API da OpenAI através do Spring AI.
-8.  Após receber a trilha gerada pela IA, o Consumer atualiza o registro no banco de dados com o conteúdo JSON e altera o status para `CONCLUIDA` (ou `ERRO` em caso de falha).
+2.  **Criação da Trilha de Aprendizado:**
+    *   O cliente envia uma requisição `POST /api/v1/learning-paths`, incluindo o Token JWT no cabeçalho `Authorization`.
+    *   O `SecurityFilter` valida o token, garantindo que a requisição seja autêntica e autorizada.
+    *   O `LearningPathController` recebe a requisição e invoca o `LearningPathService`.
+    *   O serviço chama uma **Stored Procedure** no Oracle para criar um registro da trilha com status `PENDENTE`.
+    *   A API retorna imediatamente uma resposta `HTTP 202 Accepted`.
+
+3.  **Processamento Assíncrono com IA:**
+    *   O `LearningPathService` envia uma mensagem para uma fila do RabbitMQ.
+    *   Um `Consumer` processa a mensagem, monta um prompt detalhado e o envia para a API do **Google Gemini** através do Spring AI.
+    *   Após receber a resposta da IA, o Consumer atualiza o registro no banco de dados com o conteúdo gerado e altera o status para `CONCLUIDA`.
+
+4.  **Consulta de Resultados:**
+    *   O usuário pode consultar o status e o conteúdo de suas trilhas através do endpoint `GET /api/v1/learning-paths`, autenticando-se com o mesmo token JWT.
+
+### Nota sobre Stored Procedures
+As operações de escrita (inserção, atualização e exclusão) são realizadas exclusivamente através de **Stored Procedures** do Oracle. Essa abordagem centraliza a lógica de negócio no banco de dados, garantindo a integridade dos dados e o cumprimento das regras de negócio.
 
 ---
 
@@ -46,12 +57,11 @@ Para compilar e executar o projeto localmente, você precisará de:
 - **Java JDK 17** ou superior
 - **Apache Maven 3.8+**
 - **Docker** e **Docker Compose**
-- Uma **API Key da OpenAI**
-- Um **servidor de identidade** (como Keycloak) para gerar os tokens JWT.
+- Uma **API Key do Google Gemini**
 
 ---
 
-## 4. Setup e Configuração
+## 4. Como Rodar (Setup)
 
 ### 4.1. Configuração do Ambiente
 
@@ -61,72 +71,92 @@ Para compilar e executar o projeto localmente, você precisará de:
     cd pathfinder-ai
     ```
 
-2.  **Inicie o Ambiente com Docker Compose:**
-    O `docker-compose.yml` na raiz do projeto irá provisionar um container com o **RabbitMQ** e outro com o **Oracle Database**.
+2.  **Inicie a Infraestrutura com Docker Compose:**
+    O arquivo `docker-compose.yml` na raiz do projeto provisiona os containers do **Oracle Database** e do **RabbitMQ**.
     ```bash
     docker-compose up -d
     ```
-    Isso irá iniciar os dois serviços em background.
 
 3.  **Configure o `application.yml`:**
-    - Navegue até `src/main/resources/application.yml`.
-    - Atualize as seções com suas credenciais e endpoints:
-      - `spring.security.oauth2.resourceserver.jwt.issuer-uri`: A URI do seu provedor de identidade.
-      - `spring.ai.openai.api-key`: Sua chave secreta da API da OpenAI.
-    - **As configurações de datasource e RabbitMQ já estão prontas para o ambiente do Docker Compose.**
+    -   Navegue até `src/main/resources/application.yml`.
+    -   Insira sua chave da API do Google Gemini no campo `spring.ai.openai.api-key`.
+        ```yaml
+        spring:
+          ai:
+            openai:
+              base-url: https://generativelanguage.googleapis.com/v1beta/openai
+              api-key: SUA_CHAVE_API_GEMINI_AQUI
+        ```
 
 4.  **Execute o Script do Banco de Dados:**
-    - Conecte-se ao banco de dados Oracle provisionado pelo Docker.
-    - Execute o script `gs_bd.sql` para criar as tabelas e as Stored Procedures.
+    -   Conecte-se ao banco de dados Oracle e execute o script `gs_bd.sql` para criar as tabelas e as Stored Procedures.
 
-### 4.2. Compilando o Projeto
+### 4.2. Compilando e Executando
 
-Use o Maven para compilar e instalar as dependências:
+1.  **Compile o projeto:**
+    ```bash
+    mvn clean install
+    ```
+
+2.  **Execute a aplicação:**
+    ```bash
+    mvn spring-boot:run
+    ```
+    A API estará disponível em `http://localhost:8080`.
+
+### 4.3. Como Rodar os Testes
+Para executar a suíte de testes unitários e de integração, utilize o seguinte comando Maven:
 ```bash
-mvn clean install
+mvn test
 ```
-
-### 4.3. Executando a Aplicação
-```bash
-mvn spring-boot:run
-```
-A API estará disponível em `http://localhost:8080`.
 
 ---
 
-## 5. Documentação da API
+## 5. Documentação da API (Endpoints)
 
-A API está protegida e requer um token JWT no cabeçalho `Authorization`.
+A API utiliza um sistema de autenticação JWT. Todos os endpoints de negócio requerem um token no cabeçalho `Authorization`.
 
 **`Authorization: Bearer <seu-token-jwt>`**
 
-### 5.1. Endpoints
+### Endpoints de Autenticação
+-   **`POST /auth/register`**: Registra um novo usuário.
+    - **Exemplo de Request Body:**
+      ```json
+      {
+        "nome": "Usuário Teste",
+        "email": "teste@email.com",
+        "senha": "senhaSegura123"
+      }
+      ```
 
-A coleção completa de endpoints e seus detalhes pode ser encontrada na documentação do Swagger UI, que estará disponível em `http://localhost:8080/swagger-ui.html` após a execução da aplicação.
+-   **`POST /auth/login`**: Autentica um usuário e retorna um token JWT.
+    - **Exemplo de Request Body:**
+      ```json
+      {
+        "email": "teste@email.com",
+        "senha": "senhaSegura123"
+      }
+      ```
+    - **Exemplo de Response Body:**
+      ```json
+      {
+        "token": "seu.jwt.token.aqui"
+      }
+      ```
 
----
+### Endpoints de Negócio
+-   **`POST /api/v1/learning-paths`**: Cria uma nova trilha de aprendizado (requer autenticação).
+    - **Exemplo de Request Body:**
+      ```json
+      {
+        "userId": 1,
+        "cargoAtual": "Analista de Suporte",
+        "tituloObjetivo": "Engenheiro de Machine Learning"
+      }
+      ```
 
-## 6. Detalhes da Implementação
+-   **`GET /api/v1/learning-paths`**: Lista as trilhas do usuário autenticado.
 
-### Estrutura dos Pacotes
-- **`config`**: Configurações de Beans do Spring (Segurança, RabbitMQ, Cache, I18n).
-- **`controller`**: Camada de entrada da API (REST Controllers).
-- **`domain`**: Entidades JPA que mapeiam o banco de dados.
-- **`dto`**: _Data Transfer Objects_ para desacoplar a API das entidades de domínio.
-- **`exception`**: Classes de exceção personalizadas e um handler global (`@RestControllerAdvice`).
-- **`messaging`**: Classes `Producer` e `Consumer` para interação com o RabbitMQ.
-- **`repository`**: Interfaces do Spring Data JPA, incluindo as chamadas para as Stored Procedures com `@Procedure`.
-- **`service`**: Contém a lógica de negócio principal da aplicação.
+-   **`GET /api/v1/learning-paths/{id}`**: Obtém detalhes de uma trilha específica.
 
-### Integração com Oracle Stored Procedures
-
-Para atender ao requisito de negócio, as operações de `INSERT` críticas não utilizam o método `save()` do JPA diretamente. Em vez disso, mapeamos as procedures do package `PKG_PERFIS_E_TRILHAS` nos repositórios, garantindo que a lógica de negócio do banco de dados seja respeitada.
-
-**Exemplo (`TrilhaAprendrizagemRepository.java`):**
-```java
-@Procedure(procedureName = "PKG_PERFIS_E_TRILHAS.PR_INSERIR_TRILHA")
-Long prInserirTrilha(
-    @Param("p_id_usuario") Long idUsuario,
-    @Param("p_titulo_objetivo") String tituloObjetivo
-);
-```
+A documentação completa, incluindo os DTOs de resposta, está disponível no **Swagger UI** em `http://localhost:8080/swagger-ui.html`.
