@@ -1,0 +1,54 @@
+spring:
+  application:
+    name: pathfinder-ai
+
+  # Configuração do Banco de Dados Oracle
+  datasource:
+    url: jdbc:oracle:thin:@seu-oracle-host:1521:SEU_SID
+    username: SEU_USUARIO
+    password: SUA_SENHA
+    driver-class-name: oracle.jdbc.driver.OracleDriver
+  jpa:
+    database-platform: org.hibernate.dialect.Oracle12cDialect
+    hibernate:
+      ddl-auto: none # Desabilitado para usar as tabelas existentes
+    show-sql: true
+    properties:
+      hibernate:
+        default_schema: SEU_SCHEMA
+
+  # Configuração do RabbitMQ (AMQP)
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+  # Configuração do Spring Security (OAuth2 Resource Server)
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://seu-identity-provider.com/auth/realms/seu-realm
+          jwk-set-uri: ${spring.security.oauth2.resourceserver.jwt.issuer-uri}/protocol/openid-connect/certs
+
+  # Configuração do Cache
+  cache:
+    type: caffeine
+    cache-names:
+      - learning-paths
+    caffeine:
+      spec: expireAfterWrite=10m,maximumSize=500
+
+  # Configuração do Spring AI
+  ai:
+    openai:
+      api-key: SUA_CHAVE_API_OPENAI
+      options:
+        model: gpt-4
+        temperature: 0.7
+
+# Configuração de Internacionalização
+messages:
+  basename: i18n/messages
+  encoding: UTF-8
