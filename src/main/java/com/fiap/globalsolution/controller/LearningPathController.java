@@ -4,6 +4,10 @@ import com.fiap.globalsolution.dto.CreateLearningPathRequest;
 import com.fiap.globalsolution.dto.LearningPathResponse;
 import com.fiap.globalsolution.messaging.LearningPathProducer;
 import com.fiap.globalsolution.service.LearningPathService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/learning-paths")
+@Tag(name = "Trilhas de Aprendizado", description = "Endpoints para gerenciamento de trilhas de aprendizado geradas por IA.")
 public class LearningPathController {
 
     private final LearningPathService learningPathService;
@@ -23,12 +28,15 @@ public class LearningPathController {
         this.learningPathProducer = learningPathProducer;
     }
 
-    /**
-     * Inicia a criação de uma nova trilha de aprendizado de forma assíncrona.
-     * Retorna HTTP 202 (Accepted) imediatamente.
-     * @param request DTO com os dados para criar a trilha.
-     * @return Resposta vazia com status 202.
-     */
+    @Operation(
+        summary = "Inicia a Geração de uma Nova Trilha",
+        description = "Recebe os dados do perfil do usuário e seu objetivo, inicia o registro no banco de dados com status 'PENDENTE' e envia uma mensagem para o RabbitMQ para processamento assíncrono. Retorna imediatamente o status 202 (Accepted)."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "202", description = "Requisição aceita para processamento."),
+        @ApiResponse(responseCode = "400", description = "Dados da requisição inválidos."),
+        @ApiResponse(responseCode = "500", description = "Erro interno do servidor.")
+    })
     @PostMapping
     public ResponseEntity<Void> createLearningPath(@Valid @RequestBody CreateLearningPathRequest request) {
         // 1. Inicia a transação no banco e obtém o ID da trilha
@@ -46,11 +54,14 @@ public class LearningPathController {
         return ResponseEntity.accepted().build();
     }
 
-    /**
-     * Lista todas as trilhas de aprendizado de forma paginada.
-     * @param pageable Parâmetros de paginação (size, page, sort).
-     * @return Uma página com as trilhas de aprendizado.
-     */
+    @Operation(
+        summary = "Lista Todas as Trilhas de Aprendizado",
+        description = "Retorna uma lista paginada de todas as trilhas de aprendizado existentes no sistema. O resultado é cacheado para otimizar a performance."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Lista de trilhas retornada com sucesso."),
+        @ApiResponse(responseCode = "500", description = "Erro interno do servidor.")
+    })
     @GetMapping
     public ResponseEntity<Page<LearningPathResponse>> getAllLearningPaths(
             @PageableDefault(size = 10, sort = "id") Pageable pageable) {

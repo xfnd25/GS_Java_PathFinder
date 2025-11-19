@@ -15,7 +15,10 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(authorize -> authorize
+                // MANTIDO DA MAIN: PermitAll para facilitar testes sem Token JWT
                 .requestMatchers("/api/v1/**").permitAll()
+                // Liberar Swagger
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .anyRequest().permitAll()
             )
             .oauth2ResourceServer(oauth2 -> oauth2.jwt())
