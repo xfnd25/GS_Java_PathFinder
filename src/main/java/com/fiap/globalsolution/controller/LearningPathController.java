@@ -2,6 +2,7 @@ package com.fiap.globalsolution.controller;
 
 import com.fiap.globalsolution.dto.CreateLearningPathRequest;
 import com.fiap.globalsolution.dto.LearningPathResponse;
+import com.fiap.globalsolution.dto.UpdateLearningPathRequest;
 import com.fiap.globalsolution.messaging.LearningPathProducer;
 import com.fiap.globalsolution.service.LearningPathService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -69,5 +70,23 @@ public class LearningPathController {
                 .map(LearningPathResponse::new);
 
         return ResponseEntity.ok(responsePage);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<LearningPathResponse> getLearningPathById(@PathVariable Long id) {
+        var learningPath = learningPathService.buscarTrilhaPorId(id);
+        return ResponseEntity.ok(new LearningPathResponse(learningPath));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<LearningPathResponse> updateLearningPath(@PathVariable Long id, @Valid @RequestBody UpdateLearningPathRequest request) {
+        var learningPath = learningPathService.atualizarTrilha(id, request.getTituloObjetivo());
+        return ResponseEntity.ok(new LearningPathResponse(learningPath));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteLearningPath(@PathVariable Long id) {
+        learningPathService.deletarTrilha(id);
+        return ResponseEntity.noContent().build();
     }
 }

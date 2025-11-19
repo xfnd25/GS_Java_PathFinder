@@ -70,4 +70,20 @@ public class LearningPathService {
     public Page<TrilhaAprendizagem> listarTrilhas(Pageable pageable) {
         return trilhaRepository.findAll(pageable);
     }
+
+    public TrilhaAprendizagem buscarTrilhaPorId(Long trilhaId) {
+        return trilhaRepository.findById(trilhaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Trilha não encontrada com o ID: " + trilhaId));
+    }
+
+    @Transactional
+    public TrilhaAprendizagem atualizarTrilha(Long trilhaId, String novoTitulo) {
+        trilhaRepository.prAtualizarTrilha(trilhaId, novoTitulo);
+        return buscarTrilhaPorId(trilhaId);
+    }
+
+    @Transactional
+    public void deletarTrilha(Long trilhaId) {
+        trilhaRepository.prDeletarTrilha(trilhaId);
+    }
 }
