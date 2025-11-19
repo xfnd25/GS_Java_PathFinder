@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-gs
+    ports:
+      - "5672:5672"   # Porta de comunicação com o Java
+      - "15672:15672" # Porta do Painel de Gerenciamento
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq # Persistência (para não perder filas se reiniciar)
+
+volumes:
+  rabbitmq_data:

@@ -21,6 +21,7 @@ public class CreateLearningPathRequest implements Serializable {
     @Schema(description = "ID do usuário associado ao perfil que está solicitando a trilha.", example = "1")
     private Long userId;
 
+    // Este ID será populado pelo serviço após a inserção inicial no banco
     @Schema(description = "ID da trilha que é gerado após a inserção inicial no banco. Não precisa ser enviado na requisição.", accessMode = Schema.AccessMode.READ_ONLY)
     private Long trilhaId;
 

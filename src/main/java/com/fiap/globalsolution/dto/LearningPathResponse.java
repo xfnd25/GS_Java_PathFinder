@@ -8,22 +8,22 @@ import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-@Schema(description = "DTO para representar os dados de uma trilha de aprendizado retornada pela API.")
+@Schema(description = "DTO de resposta com os detalhes da trilha de aprendizado.")
 public class LearningPathResponse {
 
-    @Schema(description = "ID único da trilha de aprendizado.", example = "101")
+    @Schema(description = "ID único da trilha.", example = "10")
     private Long idTrilha;
 
-    @Schema(description = "ID do perfil de usuário associado a esta trilha.", example = "51")
+    @Schema(description = "ID do perfil do usuário.", example = "1")
     private Long idPerfil;
 
-    @Schema(description = "Objetivo de carreira que guiou a criação desta trilha.", example = "Desenvolvedor Backend com Microsserviços")
+    @Schema(description = "Objetivo definido para a trilha.", example = "Engenheiro de Dados")
     private String tituloObjetivo;
 
-    @Schema(description = "Status atual do processamento da trilha.", example = "CONCLUIDA")
+    @Schema(description = "Status atual do processamento.", example = "CONCLUIDA")
     private StatusTrilha status;
 
-    @Schema(description = "String JSON contendo os passos da trilha de aprendizado gerados pela IA.")
+    @Schema(description = "Conteúdo JSON gerado pela IA com os passos de estudo.", example = "{\"trilha\": [{\"titulo\": \"Introdução\", ...}]}")
     private String dadosJsonIA;
 
     public LearningPathResponse(TrilhaAprendizagem trilha) {

@@ -39,12 +39,18 @@ public class LearningPathController {
     })
     @PostMapping
     public ResponseEntity<Void> createLearningPath(@Valid @RequestBody CreateLearningPathRequest request) {
+        // 1. Inicia a transação no banco e obtém o ID da trilha
         Long trilhaId = learningPathService.iniciarCriacaoTrilha(
             request.getUserId(),
             request.getTituloObjetivo()
         );
+
+        // 2. Prepara a mensagem para o RabbitMQ com o ID gerado
         request.setTrilhaId(trilhaId);
+
+        // 3. Envia a mensagem para a fila para processamento assíncrono
         learningPathProducer.sendGenerationRequest(request);
+
         return ResponseEntity.accepted().build();
     }
 
