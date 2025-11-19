@@ -1,6 +1,7 @@
 package com.fiap.globalsolution.service;
 
-import org.springframework.ai.chat.ChatClient;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.stereotype.Service;
@@ -10,10 +11,11 @@ import java.util.Map;
 @Service
 public class AIService {
 
-    private final ChatClient chatClient;
+    // Na versão 1.0.0-M1, usamos ChatModel em vez de ChatClient antigo
+    private final ChatModel chatModel;
 
-    public AIService(ChatClient chatClient) {
-        this.chatClient = chatClient;
+    public AIService(ChatModel chatModel) {
+        this.chatModel = chatModel;
     }
 
     /**
@@ -23,7 +25,7 @@ public class AIService {
      * @return Uma string JSON contendo a trilha de aprendizado sugerida.
      */
     public String gerarTrilha(String cargoAtual, String objetivo) {
-        String promptTemplate = """
+        String promptTemplateString = """
             Você é um especialista em desenvolvimento de carreira e requalificação profissional.
             Sua tarefa é criar uma trilha de estudos detalhada para um profissional que atualmente é "{cargoAtual}"
             e deseja se tornar um "{objetivo}".
@@ -53,9 +55,12 @@ public class AIService {
             Por favor, gere a trilha de estudos para o perfil fornecido.
             """;
 
-        PromptTemplate template = new PromptTemplate(promptTemplate);
+        PromptTemplate template = new PromptTemplate(promptTemplateString);
         Prompt prompt = template.create(Map.of("cargoAtual", cargoAtual, "objetivo", objetivo));
 
-        return chatClient.call(prompt).getResult().getOutput().getContent();
+        // Chamada atualizada para a API do ChatModel
+        ChatResponse response = chatModel.call(prompt);
+
+        return response.getResult().getOutput().getContent();
     }
 }
