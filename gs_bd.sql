@@ -1,5 +1,5 @@
 --======================================================================
--- PROJETO: PATHFINDER AI - SCRIPT COMPLETO E ATUALIZADO
+-- PROJETO: PATHFINDER AI - SCRIPT FINAL COMPLETO (VERSÃO FINAL)
 --======================================================================
 
 SET SERVEROUTPUT ON;
@@ -55,7 +55,7 @@ CREATE TABLE PERFIL_SKILL (
     NIVEL_DOMINIO   NUMBER DEFAULT 1 CHECK (NIVEL_DOMINIO BETWEEN 1 AND 5),
     CONSTRAINT FK_PS_PERFIL FOREIGN KEY (ID_PERFIL) REFERENCES PERFIL(ID_PERFIL),
     CONSTRAINT FK_PS_SKILL FOREIGN KEY (ID_SKILL) REFERENCES SKILL(ID_SKILL),
-    CONSTRAINT UK_PERFIL_SKILL UNIQUE (ID_PERFIL, ID_SKILL) 
+    CONSTRAINT UK_PERFIL_SKILL UNIQUE (ID_PERFIL, ID_SKILL)
 );
 
 CREATE TABLE TRILHA_APRENDIZAGEM (
@@ -63,7 +63,8 @@ CREATE TABLE TRILHA_APRENDIZAGEM (
     ID_PERFIL               NUMBER NOT NULL,
     TITULO_OBJETIVO         VARCHAR2(100) NOT NULL,
     DATA_GERACAO            DATE DEFAULT SYSDATE,
-    STATUS                  VARCHAR2(20) DEFAULT 'PENDENTE' CHECK (STATUS IN ('PENDENTE', 'EM_PROGRESSO', 'CONCLUIDA', 'GERADA')),
+    STATUS                  VARCHAR2(20) DEFAULT 'PENDENTE' CHECK (STATUS IN ('PENDENTE', 'EM_PROGRESSO', 'CONCLUIDA', 'GERADA', 'ERRO')),
+    DADOS_JSON_IA           CLOB, -- Campo para armazenar o JSON da IA
     CONSTRAINT FK_TRILHA_PERFIL FOREIGN KEY (ID_PERFIL) REFERENCES PERFIL(ID_PERFIL)
 );
 
@@ -127,7 +128,7 @@ END;
 --======================================================================
 
 CREATE OR REPLACE PACKAGE PKG_PERFIS_E_TRILHAS AS
-    -- Procedures de Insert
+    -- Procedures de Insert (Originais)
     PROCEDURE PR_INSERIR_USUARIO (
         p_nome          IN USUARIO.NOME%TYPE,
         p_email         IN USUARIO.EMAIL%TYPE,
@@ -161,6 +162,7 @@ CREATE OR REPLACE PACKAGE PKG_PERFIS_E_TRILHAS AS
         p_id_skill    IN SKILL.ID_SKILL%TYPE
     );
 
+    -- Procedures de CRUD (Novas)
     PROCEDURE PR_ATUALIZAR_TRILHA (
         p_id_trilha       IN TRILHA_APRENDIZAGEM.ID_TRILHA%TYPE,
         p_titulo_objetivo IN TRILHA_APRENDIZAGEM.TITULO_OBJETIVO%TYPE
@@ -173,10 +175,8 @@ CREATE OR REPLACE PACKAGE PKG_PERFIS_E_TRILHAS AS
     -- Funções e Exportação
     FUNCTION FN_PERFIL_TO_JSON_MANUAL (p_id_usuario IN USUARIO.ID_USUARIO%TYPE) RETURN CLOB;
     FUNCTION FN_CALC_COMPATIBILIDADE (p_id_perfil IN PERFIL.ID_PERFIL%TYPE, p_titulo_objetivo IN TRILHA_APRENDIZAGEM.TITULO_OBJETIVO%TYPE) RETURN CLOB;
-    
-    -- Procedure IMPORTANTE para a Entrega MongoDB
     PROCEDURE PR_EXPORTAR_DATASET_JSON (p_json_dataset OUT CLOB);
-    
+
 END PKG_PERFIS_E_TRILHAS;
 /
 
@@ -268,6 +268,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PERFIS_E_TRILHAS AS
         WHEN OTHERS THEN RAISE_APPLICATION_ERROR(-20020, 'Erro ao associar skill/etapa: ' || SQLERRM);
     END PR_ADICIONAR_SKILL_ETAPA;
 
+    -- === IMPLEMENTAÇÃO DO UPDATE ===
     PROCEDURE PR_ATUALIZAR_TRILHA (
         p_id_trilha       IN TRILHA_APRENDIZAGEM.ID_TRILHA%TYPE,
         p_titulo_objetivo IN TRILHA_APRENDIZAGEM.TITULO_OBJETIVO%TYPE
@@ -276,18 +277,33 @@ CREATE OR REPLACE PACKAGE BODY PKG_PERFIS_E_TRILHAS AS
         UPDATE TRILHA_APRENDIZAGEM
         SET TITULO_OBJETIVO = p_titulo_objetivo
         WHERE ID_TRILHA = p_id_trilha;
+
+        IF SQL%ROWCOUNT = 0 THEN
+            RAISE_APPLICATION_ERROR(-20025, 'Trilha não encontrada para atualização.');
+        END IF;
     EXCEPTION
         WHEN OTHERS THEN RAISE_APPLICATION_ERROR(-20022, 'Erro ao atualizar trilha: ' || SQLERRM);
     END PR_ATUALIZAR_TRILHA;
 
+    -- === IMPLEMENTAÇÃO DO DELETE (COM CASCADE MANUAL) ===
     PROCEDURE PR_DELETAR_TRILHA (
         p_id_trilha IN TRILHA_APRENDIZAGEM.ID_TRILHA%TYPE
     ) AS
     BEGIN
+        -- Remove dependências em Etapa_Skill
+        DELETE FROM ETAPA_SKILL WHERE ID_ETAPA IN (SELECT ID_ETAPA FROM ETAPA_TRILHA WHERE ID_TRILHA = p_id_trilha);
+        -- Remove Etapas
+        DELETE FROM ETAPA_TRILHA WHERE ID_TRILHA = p_id_trilha;
+        -- Remove a Trilha
         DELETE FROM TRILHA_APRENDIZAGEM WHERE ID_TRILHA = p_id_trilha;
+
+        IF SQL%ROWCOUNT = 0 THEN
+            RAISE_APPLICATION_ERROR(-20026, 'Trilha não encontrada para exclusão.');
+        END IF;
     EXCEPTION
         WHEN OTHERS THEN RAISE_APPLICATION_ERROR(-20024, 'Erro ao deletar trilha: ' || SQLERRM);
     END PR_DELETAR_TRILHA;
+
 
     -- 7. Função JSON Manual
     FUNCTION FN_PERFIL_TO_JSON_MANUAL (p_id_usuario IN USUARIO.ID_USUARIO%TYPE) RETURN CLOB AS
@@ -311,7 +327,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PERFIS_E_TRILHAS AS
     FUNCTION FN_CALC_COMPATIBILIDADE (p_id_perfil IN PERFIL.ID_PERFIL%TYPE, p_titulo_objetivo IN TRILHA_APRENDIZAGEM.TITULO_OBJETIVO%TYPE) RETURN CLOB AS
         v_email_usuario USUARIO.EMAIL%TYPE; v_compatibilidade NUMBER := 0; v_msg_retorno VARCHAR2(200);
         v_matched_count NUMBER := 0; v_total_required NUMBER := 5;
-        c_required CONSTANT SYS.ODCIVARCHAR2LIST := SYS.ODCIVARCHAR2LIST('Kubernetes', 'AWS', 'Python', 'Git', 'Linux'); 
+        c_required CONSTANT SYS.ODCIVARCHAR2LIST := SYS.ODCIVARCHAR2LIST('Kubernetes', 'AWS', 'Python', 'Git', 'Linux');
     BEGIN
         SELECT u.EMAIL INTO v_email_usuario FROM USUARIO u JOIN PERFIL p ON u.ID_USUARIO = p.ID_USUARIO WHERE p.ID_PERFIL = p_id_perfil;
         IF NOT REGEXP_LIKE(v_email_usuario, '^[a-zA-Z0-9._%+-]+@.+\.(com|org|net)$') THEN RAISE_APPLICATION_ERROR(-20006, 'Email inválido'); END IF;
@@ -326,13 +342,13 @@ CREATE OR REPLACE PACKAGE BODY PKG_PERFIS_E_TRILHAS AS
     EXCEPTION WHEN OTHERS THEN RETURN '{"erro": "Erro no calculo"}';
     END FN_CALC_COMPATIBILIDADE;
 
-    -- 9. PROCEDURE DE EXPORTAÇÃO PARA MONGODB (IMPLEMENTADO)
+    -- 9. PROCEDURE DE EXPORTAÇÃO PARA MONGODB
     PROCEDURE PR_EXPORTAR_DATASET_JSON (p_json_dataset OUT CLOB) AS
         v_json CLOB := '[';
         v_first_user BOOLEAN := TRUE;
         v_first_skill BOOLEAN;
         v_first_trilha BOOLEAN;
-        
+
         CURSOR c_users IS SELECT U.ID_USUARIO, U.NOME, U.EMAIL, P.ID_PERFIL, P.TITULO_CARGO_ATUAL FROM USUARIO U JOIN PERFIL P ON U.ID_USUARIO = P.ID_USUARIO;
         CURSOR c_skills (p_perfil_id NUMBER) IS SELECT S.NOME_SKILL, PS.NIVEL_DOMINIO FROM PERFIL_SKILL PS JOIN SKILL S ON PS.ID_SKILL = S.ID_SKILL WHERE PS.ID_PERFIL = p_perfil_id;
         CURSOR c_trilhas (p_perfil_id NUMBER) IS SELECT T.TITULO_OBJETIVO, T.STATUS FROM TRILHA_APRENDIZAGEM T WHERE T.ID_PERFIL = p_perfil_id;
@@ -340,10 +356,9 @@ CREATE OR REPLACE PACKAGE BODY PKG_PERFIS_E_TRILHAS AS
         FOR r_u IN c_users LOOP
             IF NOT v_first_user THEN v_json := v_json || ','; END IF;
             v_first_user := FALSE;
-            
+
             v_json := v_json || '{"_id": ' || r_u.ID_USUARIO || ', "nome": "' || r_u.NOME || '", "email": "' || r_u.EMAIL || '", "cargo": "' || r_u.TITULO_CARGO_ATUAL || '"';
-            
-            -- Skills Aninhadas
+
             v_json := v_json || ', "habilidades": [';
             v_first_skill := TRUE;
             FOR r_s IN c_skills(r_u.ID_PERFIL) LOOP
@@ -352,8 +367,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PERFIS_E_TRILHAS AS
                 v_first_skill := FALSE;
             END LOOP;
             v_json := v_json || ']';
-            
-            -- Trilhas Aninhadas
+
             v_json := v_json || ', "trilhas": [';
             v_first_trilha := TRUE;
             FOR r_t IN c_trilhas(r_u.ID_PERFIL) LOOP
@@ -362,7 +376,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PERFIS_E_TRILHAS AS
                 v_first_trilha := FALSE;
             END LOOP;
             v_json := v_json || ']}';
-            
+
         END LOOP;
         v_json := v_json || ']';
         p_json_dataset := v_json;
@@ -372,22 +386,24 @@ END PKG_PERFIS_E_TRILHAS;
 /
 
 --======================================================================
--- 6. INSERÇÃO DE DADOS (CARGA INICIAL)
+-- 6. INSERÇÃO DE DADOS (CARGA INICIAL COM SENHA HASH)
 --======================================================================
 DECLARE
     v_uid NUMBER; v_sid NUMBER; v_tid NUMBER; v_eid NUMBER;
     v_sk_sql NUMBER; v_sk_aws NUMBER; v_sk_docker NUMBER; v_sk_k8s NUMBER;
+    -- Hash gerado para a senha "123456" (padrão BCrypt)
+    v_senha_padrao VARCHAR2(100) := '$2a$10$eAccYoNOHEqXve8aIWT8Nu3PkMXWBaOxJ9aORUYzfMQCbVBIhZqKu';
 BEGIN
-    -- Carga Skills Básicas para uso
+    -- Carga Skills Básicas
     PKG_PERFIS_E_TRILHAS.PR_INSERIR_SKILL('SQL', 'HARD', v_sk_sql);
     PKG_PERFIS_E_TRILHAS.PR_INSERIR_SKILL('AWS', 'HARD', v_sk_aws);
     PKG_PERFIS_E_TRILHAS.PR_INSERIR_SKILL('Docker', 'HARD', v_sk_docker);
     PKG_PERFIS_E_TRILHAS.PR_INSERIR_SKILL('Kubernetes', 'HARD', v_sk_k8s);
-    -- + Outras skills genéricas...
     PKG_PERFIS_E_TRILHAS.PR_INSERIR_SKILL('Python', 'HARD', v_sid);
     PKG_PERFIS_E_TRILHAS.PR_INSERIR_SKILL('Java', 'HARD', v_sid);
     PKG_PERFIS_E_TRILHAS.PR_INSERIR_SKILL('Comunicação', 'SOFT', v_sid);
     PKG_PERFIS_E_TRILHAS.PR_INSERIR_SKILL('Liderança', 'SOFT', v_sid);
+    -- REINSERINDO AS SKILLS QUE FALTAVAM
     PKG_PERFIS_E_TRILHAS.PR_INSERIR_SKILL('Git', 'HARD', v_sid);
     PKG_PERFIS_E_TRILHAS.PR_INSERIR_SKILL('React', 'HARD', v_sid);
     PKG_PERFIS_E_TRILHAS.PR_INSERIR_SKILL('Scrum', 'SOFT', v_sid);
@@ -396,9 +412,11 @@ BEGIN
 
     -- Carga Usuários (10)
     FOR i IN 1..10 LOOP
-        PKG_PERFIS_E_TRILHAS.PR_INSERIR_USUARIO('Usuario '||i, 'user'||i||'@empresa.com', '123', v_uid);
-        -- Add Skills
+        -- Agora usando a senha hash
+        PKG_PERFIS_E_TRILHAS.PR_INSERIR_USUARIO('Usuario '||i, 'user'||i||'@empresa.com', v_senha_padrao, v_uid);
+
         PKG_PERFIS_E_TRILHAS.PR_ADICIONAR_SKILL_PERFIL(v_uid, v_sk_sql, 3);
+
         IF i < 5 THEN 
              PKG_PERFIS_E_TRILHAS.PR_ADICIONAR_SKILL_PERFIL(v_uid, v_sk_aws, 2);
              PKG_PERFIS_E_TRILHAS.PR_INSERIR_TRILHA(v_uid, 'Engenheiro de DevOps Cloud', v_tid);

@@ -49,4 +49,4 @@ messages:
 api:
   security:
     token:
-      secret: "my-secret-key"
+      secret: "9b51ab40-3222-46a2-a7a3-4f1d3258319d"
