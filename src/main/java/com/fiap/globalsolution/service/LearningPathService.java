@@ -4,6 +4,8 @@ import com.fiap.globalsolution.domain.TrilhaAprendizagem;
 import com.fiap.globalsolution.domain.enums.StatusTrilha;
 import com.fiap.globalsolution.exception.ResourceNotFoundException;
 import com.fiap.globalsolution.repository.TrilhaAprendizagemRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class LearningPathService {
 
+    private static final Logger log = LoggerFactory.getLogger(LearningPathService.class);
     private final TrilhaAprendizagemRepository trilhaRepository;
 
     public LearningPathService(TrilhaAprendizagemRepository trilhaRepository) {
@@ -45,6 +48,7 @@ public class LearningPathService {
         trilha.setDadosJsonIA(conteudoJson);
         trilha.setStatus(StatusTrilha.CONCLUIDA);
         trilhaRepository.save(trilha);
+        log.info("Trilha {} atualizada com sucesso com o conteúdo da IA.", trilhaId);
     }
 
     /**
@@ -58,6 +62,7 @@ public class LearningPathService {
 
         trilha.setStatus(StatusTrilha.ERRO);
         trilhaRepository.save(trilha);
+        log.error("Falha ao processar a trilha ID: {}. Status alterado para ERRO.", trilhaId);
     }
 
     /**

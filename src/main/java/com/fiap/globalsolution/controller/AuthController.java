@@ -4,6 +4,7 @@ import com.fiap.globalsolution.domain.Usuario;
 import com.fiap.globalsolution.dto.LoginRequest;
 import com.fiap.globalsolution.dto.RegisterRequest;
 import com.fiap.globalsolution.dto.TokenResponse;
+import com.fiap.globalsolution.exception.UserAlreadyExistsException;
 import com.fiap.globalsolution.repository.UsuarioRepository;
 import com.fiap.globalsolution.service.TokenService;
 import jakarta.validation.Valid;
@@ -46,7 +47,7 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<Void> register(@RequestBody @Valid RegisterRequest data) {
         if(usuarioRepository.findByEmail(data.email()) != null) {
-            return ResponseEntity.badRequest().build();
+            throw new UserAlreadyExistsException("O email informado já está em uso.");
         }
 
         String encryptedPassword = passwordEncoder.encode(data.senha());
