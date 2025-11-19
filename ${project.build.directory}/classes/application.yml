@@ -2,7 +2,6 @@ spring:
   application:
     name: pathfinder-ai
 
-  # (Mantenha as configurações de Datasource e JPA iguais...)
   datasource:
     url: jdbc:oracle:thin:@oracle.fiap.com.br:1521:ORCL
     username: rm555317
@@ -41,15 +40,12 @@ spring:
     caffeine:
       spec: expireAfterWrite=10m,maximumSize=500
 
-  # CONFIGURAÇÃO DO GEMINI USANDO O CLIENTE OPENAI (DENTRO DO SPRING AI)
   ai:
     openai:
-      # URL Base ajustada para o endpoint de compatibilidade OpenAI do Gemini
       base-url: https://generativelanguage.googleapis.com/v1beta/openai
       api-key: AIzaSyDq-j2_3OKM9xiEasO63FpCYRmdBAf3AF4
       chat:
         options:
-          # Modelo Gemini 2.0 Flash (validado pelo seu curl)
           model: gemini-2.0-flash
           temperature: 0.7
 

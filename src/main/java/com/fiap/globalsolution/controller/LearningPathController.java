@@ -1,5 +1,6 @@
 package com.fiap.globalsolution.controller;
 
+import com.fiap.globalsolution.domain.TrilhaAprendizagem; // Import Adicionado
 import com.fiap.globalsolution.dto.CreateLearningPathRequest;
 import com.fiap.globalsolution.dto.LearningPathResponse;
 import com.fiap.globalsolution.dto.UpdateLearningPathRequest;
@@ -72,18 +73,23 @@ public class LearningPathController {
         return ResponseEntity.ok(responsePage);
     }
 
+    @Operation(summary = "Busca uma Trilha por ID")
     @GetMapping("/{id}")
     public ResponseEntity<LearningPathResponse> getLearningPathById(@PathVariable Long id) {
-        var learningPath = learningPathService.buscarTrilhaPorId(id);
+        // CORREÇÃO: 'var' substituído pelo tipo explícito
+        TrilhaAprendizagem learningPath = learningPathService.buscarTrilhaPorId(id);
         return ResponseEntity.ok(new LearningPathResponse(learningPath));
     }
 
+    @Operation(summary = "Atualiza o Objetivo de uma Trilha")
     @PutMapping("/{id}")
     public ResponseEntity<LearningPathResponse> updateLearningPath(@PathVariable Long id, @Valid @RequestBody UpdateLearningPathRequest request) {
-        var learningPath = learningPathService.atualizarTrilha(id, request.getTituloObjetivo());
+        // CORREÇÃO: 'var' substituído pelo tipo explícito
+        TrilhaAprendizagem learningPath = learningPathService.atualizarTrilha(id, request.getTituloObjetivo());
         return ResponseEntity.ok(new LearningPathResponse(learningPath));
     }
 
+    @Operation(summary = "Exclui uma Trilha")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteLearningPath(@PathVariable Long id) {
         learningPathService.deletarTrilha(id);

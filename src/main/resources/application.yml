@@ -3,9 +3,9 @@ spring:
     name: pathfinder-ai
 
   datasource:
-    url: jdbc:oracle:thin:@localhost:1521:FREE
-    username: myuser
-    password: password
+    url: jdbc:oracle:thin:@oracle.fiap.com.br:1521:ORCL
+    username: rm555317
+    password: "251004"
     driver-class-name: oracle.jdbc.driver.OracleDriver
     hikari:
       maximum-pool-size: 2
@@ -18,7 +18,7 @@ spring:
     show-sql: true
     properties:
       hibernate:
-        default_schema: myuser
+        default_schema: rm555317
 
   rabbitmq:
     host: localhost
@@ -43,7 +43,7 @@ spring:
   ai:
     openai:
       base-url: https://generativelanguage.googleapis.com/v1beta/openai
-      api-key: ${SPRING_AI_API_KEY}
+      api-key: AIzaSyDq-j2_3OKM9xiEasO63FpCYRmdBAf3AF4
       chat:
         options:
           model: gemini-2.0-flash
