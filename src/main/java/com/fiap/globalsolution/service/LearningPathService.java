@@ -2,6 +2,7 @@ package com.fiap.globalsolution.service;
 
 import com.fiap.globalsolution.domain.TrilhaAprendizagem;
 import com.fiap.globalsolution.domain.enums.StatusTrilha;
+import com.fiap.globalsolution.dto.request.CreateLearningPathRequest;
 import com.fiap.globalsolution.dto.request.LearningPathCreateRequest;
 import com.fiap.globalsolution.exception.ResourceNotFoundException;
 import com.fiap.globalsolution.messaging.LearningPathProducer;
@@ -29,12 +30,19 @@ public class LearningPathService {
     /**
      * Inicia a criação de uma nova trilha, salvando no banco e enviando para a fila.
      * @param request Os dados da requisição.
+     * @param userId O ID do usuário autenticado.
      */
     @Transactional
-    public void criarTrilha(LearningPathCreateRequest request) {
-        Long trilhaId = trilhaRepository.prInserirTrilha(request.getUserId(), request.getTituloObjetivo());
-        request.setTrilhaId(trilhaId);
-        learningPathProducer.sendGenerationRequest(request);
+    public void criarTrilha(CreateLearningPathRequest request, Long userId) {
+        Long trilhaId = trilhaRepository.prInserirTrilha(userId, request.getTituloObjetivo());
+
+        LearningPathCreateRequest queueRequest = new LearningPathCreateRequest();
+        queueRequest.setUserId(userId);
+        queueRequest.setTrilhaId(trilhaId);
+        queueRequest.setCargoAtual(request.getCargoAtual());
+        queueRequest.setTituloObjetivo(request.getTituloObjetivo());
+
+        learningPathProducer.sendGenerationRequest(queueRequest);
         log.info("Requisição para criar trilha com ID {} enviada para a fila.", trilhaId);
     }
 

@@ -2,6 +2,8 @@ package com.fiap.globalsolution.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fiap.globalsolution.domain.TrilhaAprendizagem;
+import com.fiap.globalsolution.domain.Usuario;
+import com.fiap.globalsolution.dto.request.CreateLearningPathRequest;
 import com.fiap.globalsolution.dto.UpdateLearningPathRequest;
 import com.fiap.globalsolution.messaging.LearningPathProducer;
 import com.fiap.globalsolution.service.LearningPathService;
@@ -14,12 +16,13 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.BDDMockito.given;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
 @WebMvcTest(LearningPathController.class)
-@WithMockUser
 class LearningPathControllerTest {
 
     @Autowired
@@ -41,6 +44,26 @@ class LearningPathControllerTest {
     private ObjectMapper objectMapper;
 
     @Test
+    void createLearningPath_shouldReturnAccepted() throws Exception {
+        var request = new CreateLearningPathRequest("Dev", "Architect");
+
+        // Create a mock user
+        Usuario mockUser = new Usuario();
+        mockUser.setId(1L);
+        mockUser.setEmail("test@test.com");
+        mockUser.setSenhaHash("pass");
+        mockUser.setNome("Test User");
+
+        mockMvc.perform(post("/api/v1/learning-paths")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .with(csrf())
+                        .with(user(mockUser)))
+                .andExpect(status().isAccepted());
+    }
+
+    @Test
+    @WithMockUser
     void getLearningPathById_shouldReturnLearningPath() throws Exception {
         var trilha = new TrilhaAprendizagem();
         trilha.setId(1L);
@@ -52,6 +75,7 @@ class LearningPathControllerTest {
     }
 
     @Test
+    @WithMockUser
     void updateLearningPath_shouldReturnUpdatedLearningPath() throws Exception {
         var request = new UpdateLearningPathRequest();
         request.setTituloObjetivo("Novo Titulo");
@@ -71,6 +95,7 @@ class LearningPathControllerTest {
     }
 
     @Test
+    @WithMockUser
     void deleteLearningPath_shouldReturnNoContent() throws Exception {
         mockMvc.perform(delete("/api/v1/learning-paths/1")
                         .with(csrf()))

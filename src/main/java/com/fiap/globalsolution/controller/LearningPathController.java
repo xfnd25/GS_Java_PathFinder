@@ -1,15 +1,18 @@
 package com.fiap.globalsolution.controller;
 
 import com.fiap.globalsolution.domain.TrilhaAprendizagem;
-import com.fiap.globalsolution.dto.request.LearningPathCreateRequest;
+import com.fiap.globalsolution.domain.Usuario;
+import com.fiap.globalsolution.dto.request.CreateLearningPathRequest;
 import com.fiap.globalsolution.dto.response.LearningPathDetailResponse;
 import com.fiap.globalsolution.dto.UpdateLearningPathRequest;
 import com.fiap.globalsolution.service.LearningPathService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -37,8 +40,10 @@ public class LearningPathController {
             @ApiResponse(responseCode = "400", description = "Dados inválidos.")
     })
     @PostMapping
-    public ResponseEntity<Void> createLearningPath(@Valid @RequestBody LearningPathCreateRequest request) {
-        learningPathService.criarTrilha(request);
+    public ResponseEntity<Void> createLearningPath(
+            @Valid @RequestBody CreateLearningPathRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal Usuario usuarioLogado) {
+        learningPathService.criarTrilha(request, usuarioLogado.getId());
         return ResponseEntity.accepted().build();
     }
 
