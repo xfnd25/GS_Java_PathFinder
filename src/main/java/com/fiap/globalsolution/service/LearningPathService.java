@@ -9,6 +9,7 @@ import com.fiap.globalsolution.messaging.LearningPathProducer;
 import com.fiap.globalsolution.repository.TrilhaAprendizagemRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,9 +32,11 @@ public class LearningPathService {
      * Inicia a criação de uma nova trilha, salvando no banco e enviando para a fila.
      * @param request Os dados da requisição.
      * @param userId O ID do usuário autenticado.
+     * @return O ID da trilha criada.
      */
     @Transactional
-    public void criarTrilha(CreateLearningPathRequest request, Long userId) {
+    @CacheEvict(value = "learning-paths", key = "#userId")
+    public Long criarTrilha(CreateLearningPathRequest request, Long userId) {
         Long trilhaId = trilhaRepository.prInserirTrilha(userId, request.getTituloObjetivo());
 
         LearningPathCreateRequest queueRequest = new LearningPathCreateRequest();
@@ -44,6 +47,7 @@ public class LearningPathService {
 
         learningPathProducer.sendGenerationRequest(queueRequest);
         log.info("Requisição para criar trilha com ID {} enviada para a fila.", trilhaId);
+        return trilhaId;
     }
 
     /**
@@ -73,13 +77,14 @@ public class LearningPathService {
     }
 
     /**
-     * Lista todas as trilhas de aprendizado de forma paginada.
+     * Lista todas as trilhas de aprendizado de um usuário específico de forma paginada.
+     * @param usuarioId O ID do usuário.
      * @param pageable Configuração de paginação.
      * @return Uma página de trilhas.
      */
-    @Cacheable("learning-paths")
-    public Page<TrilhaAprendizagem> listarTrilhas(Pageable pageable) {
-        return trilhaRepository.findAll(pageable);
+    @Cacheable(value = "learning-paths", key = "#usuarioId")
+    public Page<TrilhaAprendizagem> listarTrilhas(Long usuarioId, Pageable pageable) {
+        return trilhaRepository.findByPerfilUsuarioId(usuarioId, pageable);
     }
 
     public TrilhaAprendizagem buscarTrilhaPorId(Long trilhaId) {

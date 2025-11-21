@@ -11,8 +11,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import com.fiap.globalsolution.repository.UsuarioRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,21 +24,27 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     @Autowired
-    private AuthenticationManager authenticationManager;
-
-    @Autowired
     private AuthenticationService authenticationService;
 
     @Autowired
     private TokenService tokenService;
 
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     @PostMapping("/login")
     @Operation(summary = "Authenticate user and return a JWT token.")
     public ResponseEntity<TokenResponse> login(@RequestBody @Valid LoginRequest data) {
-        var usernamePassword = new UsernamePasswordAuthenticationToken(data.email(), data.senha());
-        var auth = this.authenticationManager.authenticate(usernamePassword);
+        Usuario user = (Usuario) usuarioRepository.findByEmail(data.email());
 
-        var token = tokenService.generateToken((Usuario) auth.getPrincipal());
+        if (user == null || !passwordEncoder.matches(data.senha(), user.getSenhaHash())) {
+            return ResponseEntity.status(403).build();
+        }
+
+        var token = tokenService.generateToken(user);
 
         return ResponseEntity.ok(new TokenResponse(token));
     }
