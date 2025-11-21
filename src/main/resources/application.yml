@@ -42,9 +42,9 @@ spring:
           model: gemini-2.0-flash
           temperature: 0.7
 
-messages:
-  basename: i18n/messages
-  encoding: UTF-8
+  messages:
+    basename: i18n/messages
+    encoding: UTF-8
 
 api:
   security:
