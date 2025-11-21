@@ -82,7 +82,7 @@ public class LearningPathService {
      * @param pageable Configuração de paginação.
      * @return Uma página de trilhas.
      */
-    @Cacheable(value = "learning-paths", key = "#usuarioId")
+    @Cacheable(value = "learning-paths", key = "#usuarioId + '-' + #pageable.pageNumber + '-' + #pageable.pageSize")
     public Page<TrilhaAprendizagem> listarTrilhas(Long usuarioId, Pageable pageable) {
         return trilhaRepository.findByPerfilUsuarioId(usuarioId, pageable);
     }
