@@ -89,7 +89,7 @@ public class LearningPathService {
 
     public TrilhaAprendizagem buscarTrilhaPorId(Long trilhaId) {
         return trilhaRepository.findById(trilhaId)
-                .orElseThrow(() -> new ResourceNotFoundException("Trilha não encontrada com o ID: " + trilhaId));
+                .orElseThrow(() -> new ResourceNotFoundException(String.valueOf(trilhaId)));
     }
 
     @Transactional

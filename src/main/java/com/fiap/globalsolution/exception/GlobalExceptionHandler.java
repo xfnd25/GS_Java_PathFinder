@@ -26,8 +26,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleResourceNotFoundException(ResourceNotFoundException ex) {
         Map<String, String> errorResponse = new HashMap<>();
-        // Tenta usar a mensagem da exceção, que é mais específica
-        errorResponse.put("error", ex.getMessage());
+
+        // O ex.getMessage() agora contém apenas o ID (ex: "999999")
+        // Usamos isso como argumento para a mensagem internacionalizada
+        String message = messageSource.getMessage("learning.path.not.found", new Object[]{ex.getMessage()}, LocaleContextHolder.getLocale());
+
+        errorResponse.put("error", message);
         return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
     }
 
