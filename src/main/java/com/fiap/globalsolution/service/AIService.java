@@ -46,6 +46,70 @@ public class AIService {
         // Chamada atualizada para a API do ChatModel
         ChatResponse response = chatModel.call(prompt);
 
-        return response.getResult().getOutput().getContent();
+        String rawOutput = response.getResult().getOutput().getContent();
+        return cleanJsonOutput(rawOutput);
+    }
+
+    /**
+     * Limpa a saída da IA para garantir que apenas o JSON seja retornado,
+     * removendo delimitadores de Markdown como ```json ou ```.
+     *
+     * @param output A string original retornada pela IA.
+     * @return A string contendo apenas o JSON.
+     */
+    private String cleanJsonOutput(String output) {
+        if (output == null || output.trim().isEmpty()) {
+            return output;
+        }
+
+        String cleaned = output.trim();
+
+        // Remove o início do bloco de código Markdown (ex: ```json ou ```)
+        if (cleaned.startsWith("```")) {
+            int firstNewLine = cleaned.indexOf('\n');
+            if (firstNewLine != -1) {
+                cleaned = cleaned.substring(firstNewLine + 1);
+            } else {
+                // Se começar com ``` mas não tiver quebra de linha, pode ser algo estranho,
+                // mas vamos tentar remover os 3 primeiros caracteres ou procurar o JSON.
+                // Melhor estratégia: encontrar o primeiro '{' ou '['.
+            }
+        }
+
+        // Estratégia mais robusta: encontrar o primeiro '{' ou '[' e o último '}' ou ']'
+        int firstBrace = cleaned.indexOf('{');
+        int firstBracket = cleaned.indexOf('[');
+        int start = -1;
+
+        if (firstBrace != -1 && firstBracket != -1) {
+            start = Math.min(firstBrace, firstBracket);
+        } else if (firstBrace != -1) {
+            start = firstBrace;
+        } else if (firstBracket != -1) {
+            start = firstBracket;
+        }
+
+        if (start != -1) {
+            cleaned = cleaned.substring(start);
+        }
+
+        // Remove o final do bloco de código Markdown (```)
+        int lastBrace = cleaned.lastIndexOf('}');
+        int lastBracket = cleaned.lastIndexOf(']');
+        int end = -1;
+
+        if (lastBrace != -1 && lastBracket != -1) {
+            end = Math.max(lastBrace, lastBracket);
+        } else if (lastBrace != -1) {
+            end = lastBrace;
+        } else if (lastBracket != -1) {
+            end = lastBracket;
+        }
+
+        if (end != -1) {
+            cleaned = cleaned.substring(0, end + 1);
+        }
+
+        return cleaned;
     }
 }
