@@ -4,8 +4,10 @@ spring:
 
   datasource:
     url: jdbc:oracle:thin:@oracle.fiap.com.br:1521:ORCL
-    username: rm555317
-    password: "251004"
+    # Substitua abaixo pelo seu RM/Usuário Oracle
+    username: ${ORACLE_USERNAME:seu_usuario_oracle}
+    # Substitua abaixo pela sua senha Oracle
+    password: ${ORACLE_PASSWORD:sua_senha_oracle}
     driver-class-name: oracle.jdbc.driver.OracleDriver
     hikari:
       maximum-pool-size: 2
@@ -18,13 +20,14 @@ spring:
     show-sql: true
     properties:
       hibernate:
-        default_schema: rm555317
+        # Geralmente é o mesmo que o username
+        default_schema: ${ORACLE_USERNAME:seu_usuario_oracle}
 
   rabbitmq:
-    host: localhost
+    host: ${RABBITMQ_HOST:localhost}
     port: 5672
-    username: guest
-    password: guest
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASS:guest}
 
   cache:
     type: caffeine
@@ -36,12 +39,14 @@ spring:
   ai:
     openai:
       base-url: https://generativelanguage.googleapis.com/v1beta/openai
-      api-key: AIzaSyDq-j2_3OKM9xiEasO63FpCYRmdBAf3AF4
+      # Coloque aqui sua chave da API do Google Gemini
+      api-key: ${GEMINI_API_KEY:sua_api_key_do_google_aqui}
       chat:
         options:
           model: gemini-2.0-flash
           temperature: 0.7
 
+  # Correção aplicada: messages deve ficar dentro de spring
   messages:
     basename: i18n/messages
     encoding: UTF-8
@@ -49,4 +54,5 @@ spring:
 api:
   security:
     token:
-      secret: "9b51ab40-3222-46a2-a7a3-4f1d3258319d"
+      # Gere um GUID ou use uma senha forte para assinar os tokens
+      secret: ${JWT_SECRET:coloque_um_segredo_jwt_muito_forte_aqui}
