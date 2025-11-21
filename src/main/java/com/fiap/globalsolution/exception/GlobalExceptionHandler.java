@@ -69,7 +69,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleGenericException(Exception ex) {
         Map<String, String> errorResponse = new HashMap<>();
         // Para erros inesperados, uma mensagem genérica é mais segura.
-        String message = messageSource.getMessage("request.invalid", null, LocaleContextHolder.getLocale());
+        String message = messageSource.getMessage("request.invalid", null, "Erro interno do servidor", LocaleContextHolder.getLocale());
         errorResponse.put("error", message);
         errorResponse.put("detail", ex.getMessage()); // Adiciona o detalhe técnico para depuração
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
