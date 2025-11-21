@@ -40,7 +40,11 @@ public class LearningPathDetailResponse {
 
         if (trilha.getDadosJsonIA() != null && !trilha.getDadosJsonIA().isEmpty()) {
             try {
-                this.dadosJsonIA = mapper.readValue(trilha.getDadosJsonIA(), Object.class);
+                String limpo = trilha.getDadosJsonIA()
+                        .replace("```json", "")
+                        .replace("```", "")
+                        .trim();
+                this.dadosJsonIA = mapper.readValue(limpo, Object.class);
             } catch (JsonProcessingException e) {
                 log.error("Error parsing JSON for Trilha ID " + trilha.getId(), e);
                 this.dadosJsonIA = null;
