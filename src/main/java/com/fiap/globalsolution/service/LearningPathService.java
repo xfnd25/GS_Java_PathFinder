@@ -31,9 +31,10 @@ public class LearningPathService {
      * Inicia a criação de uma nova trilha, salvando no banco e enviando para a fila.
      * @param request Os dados da requisição.
      * @param userId O ID do usuário autenticado.
+     * @return O ID da trilha recém-criada.
      */
     @Transactional
-    public void criarTrilha(CreateLearningPathRequest request, Long userId) {
+    public Long criarTrilha(CreateLearningPathRequest request, Long userId) {
         Long trilhaId = trilhaRepository.prInserirTrilha(userId, request.getTituloObjetivo());
 
         LearningPathCreateRequest queueRequest = new LearningPathCreateRequest();
@@ -44,6 +45,8 @@ public class LearningPathService {
 
         learningPathProducer.sendGenerationRequest(queueRequest);
         log.info("Requisição para criar trilha com ID {} enviada para a fila.", trilhaId);
+
+        return trilhaId;
     }
 
     /**
@@ -73,11 +76,20 @@ public class LearningPathService {
     }
 
     /**
-     * Lista todas as trilhas de aprendizado de forma paginada.
+     * Lista todas as trilhas de aprendizado de um usuário específico de forma paginada.
+     * @param userId O ID do usuário.
      * @param pageable Configuração de paginação.
-     * @return Uma página de trilhas.
+     * @return Uma página de trilhas do usuário.
      */
-    @Cacheable("learning-paths")
+    @Cacheable(value = "learning-paths", key = "#userId")
+    public Page<TrilhaAprendizagem> listarTrilhasPorUsuario(Long userId, Pageable pageable) {
+        return trilhaRepository.findByPerfilUsuarioId(userId, pageable);
+    }
+
+    /**
+     * @deprecated Use listarTrilhasPorUsuario ao invés deste.
+     */
+    @Deprecated
     public Page<TrilhaAprendizagem> listarTrilhas(Pageable pageable) {
         return trilhaRepository.findAll(pageable);
     }

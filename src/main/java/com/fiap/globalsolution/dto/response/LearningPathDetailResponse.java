@@ -15,8 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 @Schema(description = "DTO for learning path details.")
 public class LearningPathDetailResponse {
 
-    private static final ObjectMapper mapper = new ObjectMapper();
-
     @Schema(description = "Unique path ID.", example = "10")
     private Long idTrilha;
 
@@ -40,6 +38,7 @@ public class LearningPathDetailResponse {
 
         if (trilha.getDadosJsonIA() != null && !trilha.getDadosJsonIA().isEmpty()) {
             try {
+                ObjectMapper mapper = new ObjectMapper();
                 this.dadosJsonIA = mapper.readValue(trilha.getDadosJsonIA(), Object.class);
             } catch (JsonProcessingException e) {
                 log.error("Error parsing JSON for Trilha ID " + trilha.getId(), e);

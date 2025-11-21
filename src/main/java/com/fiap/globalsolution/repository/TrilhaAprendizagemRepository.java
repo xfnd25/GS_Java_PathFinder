@@ -35,7 +35,15 @@ public interface TrilhaAprendizagemRepository extends JpaRepository<TrilhaAprend
     );
 
     /**
-     * Busca todas as trilhas de aprendizagem de forma paginada.
+     * Busca todas as trilhas de aprendizagem de um usuário específico de forma paginada.
+     * @param usuarioId O ID do usuário.
+     * @param pageable Objeto de paginação.
+     * @return Uma página de trilhas de aprendizagem filtrada por usuário.
+     */
+    Page<TrilhaAprendizagem> findByPerfilUsuarioId(Long usuarioId, Pageable pageable);
+
+    /**
+     * Busca todas as trilhas de aprendizagem de forma paginada (Admin ou fallback).
      * @param pageable Objeto de paginação.
      * @return Uma página de trilhas de aprendizagem.
      */

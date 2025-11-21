@@ -11,16 +11,24 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(LearningPathController.class)
 class LearningPathControllerTest {
@@ -44,7 +52,7 @@ class LearningPathControllerTest {
     private ObjectMapper objectMapper;
 
     @Test
-    void createLearningPath_shouldReturnAccepted() throws Exception {
+    void createLearningPath_shouldReturnAcceptedAndId() throws Exception {
         var request = new CreateLearningPathRequest("Dev", "Architect");
 
         // Create a mock user
@@ -54,12 +62,43 @@ class LearningPathControllerTest {
         mockUser.setSenhaHash("pass");
         mockUser.setNome("Test User");
 
+        given(learningPathService.criarTrilha(any(CreateLearningPathRequest.class), eq(1L))).willReturn(123L);
+
         mockMvc.perform(post("/api/v1/learning-paths")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
                         .with(csrf())
                         .with(user(mockUser)))
-                .andExpect(status().isAccepted());
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.id").value(123L))
+                .andExpect(jsonPath("$.mensagem").value("Trilha em processamento"));
+    }
+
+    @Test
+    void getAllLearningPaths_shouldReturnPageOfLearningPaths() throws Exception {
+        // Create a mock user
+        Usuario mockUser = new Usuario();
+        mockUser.setId(1L);
+        mockUser.setEmail("test@test.com");
+        mockUser.setSenhaHash("pass");
+        mockUser.setNome("Test User");
+
+        TrilhaAprendizagem trilha = new TrilhaAprendizagem();
+        trilha.setId(100L);
+        trilha.setTituloObjetivo("Learn Java");
+
+        List<TrilhaAprendizagem> list = new ArrayList<>();
+        list.add(trilha);
+        // Explicitly provide PageRequest to avoid unpaged issues if any
+        Page<TrilhaAprendizagem> page = new PageImpl<>(list, PageRequest.of(0, 10), 1);
+
+        given(learningPathService.listarTrilhasPorUsuario(eq(1L), any(Pageable.class))).willReturn(page);
+
+        mockMvc.perform(get("/api/v1/learning-paths")
+                        .with(user(mockUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].idTrilha").value(100L))
+                .andExpect(jsonPath("$.content[0].tituloObjetivo").value("Learn Java"));
     }
 
     @Test

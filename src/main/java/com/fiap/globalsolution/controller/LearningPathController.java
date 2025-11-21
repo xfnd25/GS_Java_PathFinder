@@ -20,6 +20,9 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/learning-paths")
 @Tag(name = "Trilhas de Aprendizado", description = "Endpoints para gerenciamento de trilhas de aprendizado.")
@@ -33,26 +36,33 @@ public class LearningPathController {
 
     @Operation(
             summary = "Inicia a Geração de uma Nova Trilha",
-            description = "Cria o registro da trilha e envia para processamento assíncrono. Retorna 202 (Accepted)."
+            description = "Cria o registro da trilha e envia para processamento assíncrono. Retorna 202 (Accepted) com o ID da trilha."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "202", description = "Requisição aceita."),
             @ApiResponse(responseCode = "400", description = "Dados inválidos.")
     })
     @PostMapping
-    public ResponseEntity<Void> createLearningPath(
+    public ResponseEntity<Map<String, Object>> createLearningPath(
             @Valid @RequestBody CreateLearningPathRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal Usuario usuarioLogado) {
-        learningPathService.criarTrilha(request, usuarioLogado.getId());
-        return ResponseEntity.accepted().build();
+
+        Long novaTrilhaId = learningPathService.criarTrilha(request, usuarioLogado.getId());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", novaTrilhaId);
+        response.put("mensagem", "Trilha em processamento");
+
+        return ResponseEntity.accepted().body(response);
     }
 
-    @Operation(summary = "Lista Todas as Trilhas de Aprendizado")
+    @Operation(summary = "Lista Todas as Trilhas de Aprendizado do Usuário Logado")
     @GetMapping
     public ResponseEntity<Page<LearningPathDetailResponse>> getAllLearningPaths(
+            @Parameter(hidden = true) @AuthenticationPrincipal Usuario usuarioLogado,
             @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
 
-        Page<LearningPathDetailResponse> responsePage = learningPathService.listarTrilhas(pageable)
+        Page<LearningPathDetailResponse> responsePage = learningPathService.listarTrilhasPorUsuario(usuarioLogado.getId(), pageable)
                 .map(LearningPathDetailResponse::new);
 
         return ResponseEntity.ok(responsePage);

@@ -4,15 +4,16 @@ import com.fiap.globalsolution.domain.Usuario;
 import com.fiap.globalsolution.dto.LoginRequest;
 import com.fiap.globalsolution.dto.RegisterRequest;
 import com.fiap.globalsolution.dto.TokenResponse;
+import com.fiap.globalsolution.repository.UsuarioRepository;
 import com.fiap.globalsolution.service.AuthenticationService;
 import com.fiap.globalsolution.service.TokenService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,7 +25,10 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     @Autowired
-    private AuthenticationManager authenticationManager;
+    private UsuarioRepository usuarioRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Autowired
     private AuthenticationService authenticationService;
@@ -35,11 +39,14 @@ public class AuthController {
     @PostMapping("/login")
     @Operation(summary = "Authenticate user and return a JWT token.")
     public ResponseEntity<TokenResponse> login(@RequestBody @Valid LoginRequest data) {
-        var usernamePassword = new UsernamePasswordAuthenticationToken(data.email(), data.senha());
-        var auth = this.authenticationManager.authenticate(usernamePassword);
+        // Manual authentication logic to avoid Recursion/StackOverflow
+        Usuario user = (Usuario) usuarioRepository.findByEmail(data.email());
 
-        var token = tokenService.generateToken((Usuario) auth.getPrincipal());
+        if (user == null || !passwordEncoder.matches(data.senha(), user.getPassword())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
 
+        var token = tokenService.generateToken(user);
         return ResponseEntity.ok(new TokenResponse(token));
     }
 
