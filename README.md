@@ -1,162 +1,84 @@
-# Pathfinder AI - FIAP Global Solution
+# Pathfinder AI - Módulo de Inteligência Artificial Generativa
 
-## 👨‍💻 Integrantes do Grupo
-* **Fernando Pacheco** - RM555317
-* **Guilherme Jardim** - RM556814
+Este documento detalha a arquitetura, engenharia e integração do módulo de Inteligência Artificial Generativa da solução **Pathfinder AI**. Este módulo é responsável por gerar trilhas de aprendizado personalizadas (Upskilling/Reskilling) utilizando modelos de linguagem de última geração.
 
 ---
 
-## 1. Visão Geral do Projeto
+## Arquitetura da IA
 
-O **Pathfinder AI** é uma API RESTful de backend desenvolvida como parte da Global Solution da FIAP. O projeto utiliza **Java 17** e **Spring Boot 3** para criar uma plataforma robusta que gera trilhas de aprendizado (`Learning Paths`) personalizadas para requalificação profissional, utilizando o poder da Inteligência Artificial Generativa do Google Gemini.
+A arquitetura do módulo de IA foi projetada para ser **assíncrona, resiliente e escalável**, evitando gargalos na API principal e garantindo uma experiência de usuário fluida mesmo durante operações computacionalmente intensivas.
 
-O sistema foi projetado seguindo princípios de arquiteturas distribuídas e reativas, com um fluxo assíncrono para operações de longa duração e um sistema de **autenticação JWT nativo**, garantindo que a API seja segura, responsiva e escalável.
+### Fluxo de Processamento
 
-### Principais Tecnologias
-- **Linguagem/Framework:** Java 17, Spring Boot 3
-- **Persistência:** Spring Data JPA, Oracle Database
-- **Mensageria:** Spring AMQP, RabbitMQ
-- **IA Generativa:** Spring AI (com **Google Gemini**)
-- **Segurança:** Spring Security 6 (com **autenticação JWT nativa**)
-- **Build:** Apache Maven
+1.  **Solicitação na API (Trigger):**
+    *   O usuário solicita uma nova trilha através da API Java (`POST /api/v1/learning-paths`), informando seu cargo atual e objetivo profissional.
+    *   A API valida a requisição, persiste o estado inicial no Oracle Database como `PENDENTE` e publica uma mensagem na exchange `learning-paths-exchange` do **RabbitMQ**.
+    *   A API retorna imediatamente um status `202 Accepted`, liberando o cliente enquanto o processamento ocorre em background.
 
----
+2.  **Processamento Assíncrono (Consumer):**
+    *   Um componente `LearningPathConsumer` (Listener) escuta a fila e captura a mensagem de solicitação.
+    *   Este consumidor é responsável por orquestrar a interação com o modelo de IA, isolando a lógica pesada do fluxo HTTP.
 
-## 2. Arquitetura da Solução
+3.  **Geração de Conteúdo (Spring AI + Gemini):**
+    *   O consumidor invoca o `AIService`, que constrói um prompt estruturado e realiza a chamada à API do **Google Gemini** utilizando o **Spring AI**.
+    *   O Spring AI gerencia a comunicação, timeouts e parsing da resposta.
 
-A arquitetura do Pathfinder AI foi desenhada para ser desacoplada, resiliente e segura.
+4.  **Persistência e Finalização:**
+    *   A resposta JSON gerada pelo Gemini é higienizada e validada.
+    *   O resultado é persistido no banco de dados Oracle através de uma **Stored Procedure**, atualizando o status da trilha para `CONCLUIDA`.
 
-### Fluxo da Aplicação
-1.  **Registro e Login:**
-    *   O usuário se registra na plataforma através do endpoint `POST /auth/register`.
-    *   Em seguida, realiza o login via `POST /auth/login`, fornecendo suas credenciais. A API valida os dados e retorna um **Token JWT Bearer**.
-
-2.  **Criação da Trilha de Aprendizado:**
-    *   O cliente envia uma requisição `POST /api/v1/learning-paths`, incluindo o Token JWT no cabeçalho `Authorization`.
-    *   O `SecurityFilter` valida o token, garantindo que a requisição seja autêntica e autorizada.
-    *   O `LearningPathController` recebe a requisição e invoca o `LearningPathService`.
-    *   O serviço chama uma **Stored Procedure** no Oracle para criar um registro da trilha com status `PENDENTE`.
-    *   A API retorna imediatamente uma resposta `HTTP 202 Accepted`.
-
-3.  **Processamento Assíncrono com IA:**
-    *   O `LearningPathService` envia uma mensagem para uma fila do RabbitMQ.
-    *   Um `Consumer` processa a mensagem, monta um prompt detalhado e o envia para a API do **Google Gemini** através do Spring AI.
-    *   Após receber a resposta da IA, o Consumer atualiza o registro no banco de dados com o conteúdo gerado e altera o status para `CONCLUIDA`.
-
-4.  **Consulta de Resultados:**
-    *   O usuário pode consultar o status e o conteúdo de suas trilhas através do endpoint `GET /api/v1/learning-paths`, autenticando-se com o mesmo token JWT.
-
-### Nota sobre Stored Procedures
-As operações de escrita (inserção, atualização e exclusão) são realizadas exclusivamente através de **Stored Procedures** do Oracle. Essa abordagem centraliza a lógica de negócio no banco de dados, garantindo a integridade dos dados e o cumprimento das regras de negócio.
+Esta abordagem desacoplada permite que o sistema processe picos de solicitações sem degradar a performance da API REST, garantindo robustez e alta disponibilidade.
 
 ---
 
-## 3. Pré-requisitos
+## Prompt Engineering
 
-Para compilar e executar o projeto localmente, você precisará de:
-- **Java JDK 17** ou superior
-- **Apache Maven 3.8+**
-- **Docker** e **Docker Compose**
-- Uma **API Key do Google Gemini**
+Para garantir que o modelo de linguagem (LLM) atue como um componente determinístico do sistema e não apenas como um chatbot conversacional, aplicamos técnicas rigorosas de **Prompt Engineering**.
 
----
+### Estratégia de Prompting
 
-## 4. Como Rodar (Setup)
+Utilizamos uma combinação de **Persona Adoption** (Adoção de Persona) com **Strict Output Formatting** (Formatação Rigorosa de Saída).
 
-### 4.1. Configuração do Ambiente
+*   **Persona:** O modelo é instruído a assumir o papel de um "especialista sênior em desenvolvimento de carreira e requalificação profissional", garantindo que o tom e a qualidade do conteúdo sejam adequados ao contexto corporativo.
+*   **Restrição de Formato (JSON):** Para assegurar a interoperabilidade com o backend Java, o prompt impõe uma restrição forte: a saída deve ser **estritamente um objeto JSON**.
 
-1.  **Clone o repositório:**
-    ```bash
-    git clone https://github.com/seu-usuario/pathfinder-ai.git
-    cd pathfinder-ai
-    ```
+### Exemplo de Instrução (Code Snippet)
 
-2.  **Inicie a Infraestrutura com Docker Compose:**
-    O arquivo `docker-compose.yml` na raiz do projeto provisiona os containers do **Oracle Database** e do **RabbitMQ**.
-    ```bash
-    docker-compose up -d
-    ```
+O prompt é construído dinamicamente no `AIService`:
 
-3.  **Configure o `application.yml`:**
-    -   Navegue até `src/main/resources/application.yml`.
-    -   Insira sua chave da API do Google Gemini no campo `spring.ai.openai.api-key`.
-        ```yaml
-        spring:
-          ai:
-            openai:
-              base-url: https://generativelanguage.googleapis.com/v1beta/openai
-              api-key: SUA_CHAVE_API_GEMINI_AQUI
-        ```
-
-4.  **Execute o Script do Banco de Dados:**
-    -   Conecte-se ao banco de dados Oracle e execute o script `gs_bd.sql` para criar as tabelas e as Stored Procedures.
-
-### 4.2. Compilando e Executando
-
-1.  **Compile o projeto:**
-    ```bash
-    mvn clean install
-    ```
-
-2.  **Execute a aplicação:**
-    ```bash
-    mvn spring-boot:run
-    ```
-    A API estará disponível em `http://localhost:8080`.
-
-### 4.3. Como Rodar os Testes
-Para executar a suíte de testes unitários e de integração, utilize o seguinte comando Maven:
-```bash
-mvn test
+```java
+String promptTemplateString =
+    "Você é um especialista em desenvolvimento de carreira e requalificação profissional.\n" +
+    "Sua tarefa é criar uma trilha de estudos detalhada para um profissional que atualmente é \"{cargoAtual}\"\n" +
+    "e deseja se tornar um \"{objetivo}\".\n\n" +
+    "A resposta deve ser estritamente um objeto JSON (sem markdown) contendo uma lista de \"passos\".\n" +
+    "Cada passo deve ter os campos: \"titulo\", \"descricao\" e \"tipo\" (Curso, Artigo, Vídeo ou Projeto).\n\n" +
+    "Gere a trilha agora.";
 ```
 
+### Sanitização de Saída (Post-Processing)
+
+Mesmo com instruções claras, LLMs podem ocasionalmente incluir "fences" de markdown (ex: ```json). Implementamos uma camada de sanitização (`cleanJsonOutput`) que utiliza regex e manipulação de strings para extrair o payload JSON válido antes da desserialização, garantindo que o sistema seja imune a variações na formatação da resposta do modelo.
+
 ---
 
-## 5. Documentação da API (Endpoints)
+## Tecnologias
 
-A API utiliza um sistema de autenticação JWT. Todos os endpoints de negócio requerem um token no cabeçalho `Authorization`.
+O ecossistema de IA é sustentado por uma stack moderna e robusta:
 
-**`Authorization: Bearer <seu-token-jwt>`**
+*   **Spring AI:** Framework que abstrai a complexidade de integração com LLMs, oferecendo uma interface fluida e idiomática para desenvolvedores Java.
+*   **Google Gemini API:** Modelo de IA generativa de alta performance, escolhido por sua capacidade de raciocínio complexo e grande janela de contexto.
+*   **RabbitMQ:** Broker de mensageria que viabiliza a arquitetura orientada a eventos, essencial para o desacoplamento entre a API e o motor de IA.
+*   **Jackson:** Utilizado para o processamento e validação da estrutura JSON retornada pela IA.
 
-### Endpoints de Autenticação
--   **`POST /auth/register`**: Registra um novo usuário.
-    - **Exemplo de Request Body:**
-      ```json
-      {
-        "nome": "Usuário Teste",
-        "email": "teste@email.com",
-        "senha": "senhaSegura123"
-      }
-      ```
+---
 
--   **`POST /auth/login`**: Autentica um usuário e retorna um token JWT.
-    - **Exemplo de Request Body:**
-      ```json
-      {
-        "email": "teste@email.com",
-        "senha": "senhaSegura123"
-      }
-      ```
-    - **Exemplo de Response Body:**
-      ```json
-      {
-        "token": "seu.jwt.token.aqui"
-      }
-      ```
+## Integração
 
-### Endpoints de Negócio
--   **`POST /api/v1/learning-paths`**: Cria uma nova trilha de aprendizado (requer autenticação).
-    - **Exemplo de Request Body:**
-      ```json
-      {
-        "userId": 1,
-        "cargoAtual": "Analista de Suporte",
-        "tituloObjetivo": "Engenheiro de Machine Learning"
-      }
-      ```
+A Inteligência Artificial no Pathfinder AI não é um script isolado ou um "add-on" externo; ela é um **cidadão de primeira classe** dentro da arquitetura Java Enterprise.
 
--   **`GET /api/v1/learning-paths`**: Lista as trilhas do usuário autenticado.
+*   **Segurança Unificada:** O fluxo de IA respeita o contexto de segurança da aplicação.
+*   **Transacionalidade:** As operações de persistência do resultado da IA participam das transações gerenciadas pelo Spring, garantindo consistência de dados.
+*   **Monitoramento:** Logs e métricas do processamento da IA são centralizados, permitindo rastreabilidade completa desde o clique do usuário até a geração da trilha.
 
--   **`GET /api/v1/learning-paths/{id}`**: Obtém detalhes de uma trilha específica.
-
-A documentação completa, incluindo os DTOs de resposta, está disponível no **Swagger UI** em `http://localhost:8080/swagger-ui.html`.
+Esta integração profunda assegura que a solução seja manutenível, testável e pronta para ambientes de produção corporativos.
